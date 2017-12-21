@@ -1,0 +1,9 @@
+[package]
+name = "feg"
+version = "0.1.0"
+authors = ["chrisf"]
+
+[dependencies]
+gfx = "*"
+gfx_window_glutin = "*"
+glutin = "*"
