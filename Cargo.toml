@@ -4,6 +4,4 @@ version = "0.1.0"
 authors = ["chrisf"]
 
 [dependencies]
-gfx = "*"
-gfx_window_glutin = "*"
-glutin = "*"
+ggez = { git = "https://github.com/ggez/ggez.git", branch = "master" }
