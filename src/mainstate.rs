@@ -129,14 +129,16 @@ impl MainState {
         if cpath.len() < 2 {
             return cpath
                 .into_iter()
-                .map(|p| {
-                    let (x, y) = self.grid_to_screen_coord_center(p);
-                    (x as f32, y as f32)
-                })
+                .map(|p| tuple_as!(self.grid_to_screen_coord_center(p), (x, f32), (y, f32)))
                 .collect();
         }
-        let (x, y) = self.grid_to_screen_coord_center(cpath[0]);
-        let mut segments = vec![(x as f32, y as f32)];
+        let mut segments = vec![
+            tuple_as!(
+                self.grid_to_screen_coord_center(cpath[0]),
+                (x, f32),
+                (y, f32)
+            ),
+        ];
         for window in cpath.windows(2).take(cpath.windows(2).len() - 1) {
             let prev = (*window)[0];
             let cur = (*window)[1];
@@ -158,8 +160,11 @@ impl MainState {
                 segments.push((x as f32, y as f32));
             }
         }
-        let (x, y) = self.grid_to_screen_coord_center(cpath[cpath.len() - 1]);
-        segments.push((x as f32, y as f32));
+        segments.push(tuple_as!(
+            self.grid_to_screen_coord_center(cpath[cpath.len() - 1]),
+            (x, f32),
+            (y, f32)
+        ));
         segments
     }
 }

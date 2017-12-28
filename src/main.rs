@@ -2,6 +2,8 @@ extern crate ggez;
 #[macro_use]
 extern crate indoc;
 
+#[macro_use]
+mod utils;
 mod dataparser;
 mod pathfinding;
 mod mainstate;
