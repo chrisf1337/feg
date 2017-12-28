@@ -24,6 +24,7 @@ pub struct MainState {
     pub grid_cell_dim: u32,
     pub paths: HashMap<(u32, u32), (u32, u32)>,
     pub costs: HashMap<(u32, u32), u32>,
+    pub path_line_width: u32,
 }
 
 impl MainState {
@@ -52,6 +53,7 @@ impl MainState {
             konrad_tick: 0.0,
             walls: walls.clone(),
             walls_sb,
+
             fps: 60,
             window_width: window_width,
             window_height: window_height,
@@ -65,6 +67,9 @@ impl MainState {
             grid_cell_dim: (window_height - 2 * vertical_padding) / grid_n_cell_height,
             paths,
             costs,
+
+            // Width of the line used to draw the path indicator.
+            path_line_width: 10,
         };
 
         for (x, row) in walls.iter().enumerate() {
@@ -82,6 +87,7 @@ impl MainState {
         Ok(main_state)
     }
 
+    // Includes pixels in the line of the grid
     pub fn screen_to_grid_coord(&self, (screen_x, screen_y): (u32, u32)) -> Option<(u32, u32)> {
         if screen_x < self.horizontal_padding
             || screen_x > self.window_width - self.horizontal_padding
@@ -113,5 +119,47 @@ impl MainState {
             x + (self.grid_cell_dim - self.grid_line_width) / 2,
             y + (self.grid_cell_dim - self.grid_line_width) / 2,
         )
+    }
+
+    // Converts a consolidated path returned by pathfinding::consolidate_path()
+    // into segments that can be drawn by iterating over pairs of elements in
+    // the returned vec. We need to account for the width of the line used to
+    // draw the path indicator.
+    pub fn cpath_to_segments(&self, cpath: Vec<(u32, u32)>) -> Vec<(f32, f32)> {
+        if cpath.len() < 2 {
+            return cpath
+                .into_iter()
+                .map(|p| {
+                    let (x, y) = self.grid_to_screen_coord_center(p);
+                    (x as f32, y as f32)
+                })
+                .collect();
+        }
+        let (x, y) = self.grid_to_screen_coord_center(cpath[0]);
+        let mut segments = vec![(x as f32, y as f32)];
+        for window in cpath.windows(2).take(cpath.windows(2).len() - 1) {
+            let prev = (*window)[0];
+            let cur = (*window)[1];
+            let (x, y) = self.grid_to_screen_coord_center(cur);
+            // If y coords are equal, then the line is horizontal
+            if cur.1 == prev.1 {
+                if cur.0 < prev.0 {
+                    segments.push(((x - self.path_line_width / 2) as f32, y as f32));
+                } else {
+                    segments.push(((x + self.path_line_width / 2) as f32, y as f32));
+                }
+                segments.push((x as f32, y as f32));
+            } else {
+                if cur.1 < prev.1 {
+                    segments.push((x as f32, (y - self.path_line_width / 2) as f32));
+                } else {
+                    segments.push((x as f32, (y + self.path_line_width / 2) as f32));
+                }
+                segments.push((x as f32, y as f32));
+            }
+        }
+        let (x, y) = self.grid_to_screen_coord_center(cpath[cpath.len() - 1]);
+        segments.push((x as f32, y as f32));
+        segments
     }
 }

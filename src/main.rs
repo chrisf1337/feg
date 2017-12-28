@@ -78,13 +78,10 @@ impl EventHandler for MainState {
         // Draw highlighted grid cell
         match self.screen_to_grid_coord(self.mouse_coords) {
             Some((grid_x, grid_y)) => {
-                let cpath = pathfinding::consolidate_path(pathfinding::get_path(
-                    (grid_x, grid_y),
-                    &self.paths,
-                )).into_iter()
-                    .map(|p| self.grid_to_screen_coord_center(p))
-                    .collect::<Vec<(u32, u32)>>();
-                for segment in cpath.windows(2) {
+                let mut cpath_segments = self.cpath_to_segments(pathfinding::consolidate_path(
+                    pathfinding::get_path((grid_x, grid_y), &self.paths),
+                ));
+                for segment in cpath_segments.chunks(2) {
                     let start = segment[0];
                     let end = segment[1];
                     graphics::line(
@@ -93,7 +90,7 @@ impl EventHandler for MainState {
                             Point2::new(start.0 as f32, start.1 as f32),
                             Point2::new(end.0 as f32, end.1 as f32),
                         ],
-                        10.0,
+                        self.path_line_width as f32,
                     )?;
                 }
                 let (rect_x, rect_y) = self.grid_to_screen_coord((grid_x, grid_y));

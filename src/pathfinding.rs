@@ -95,13 +95,16 @@ pub fn compute_path_costs(
     (came_from, cost_so_far)
 }
 
-// Reads from the map of backpointers to get the best path to dest. Does not include the src coord.
+// Reads from the map of backpointers to get the best path to dest.
 pub fn get_path(dest: (u32, u32), paths: &HashMap<(u32, u32), (u32, u32)>) -> Vec<(u32, u32)> {
     let mut path = vec![];
     let mut cur = dest;
     while paths.contains_key(&cur) {
         path.push(cur);
         cur = paths[&cur];
+    }
+    if path.len() > 0 {
+        path.push(cur);
     }
     path.reverse();
     path
@@ -111,18 +114,17 @@ pub fn get_path(dest: (u32, u32), paths: &HashMap<(u32, u32), (u32, u32)>) -> Ve
 // passed to the draw function
 pub fn consolidate_path(path: Vec<(u32, u32)>) -> Vec<(u32, u32)> {
     if path.len() <= 1 {
-        return path.clone();
+        return path;
     }
     let mut consolidated_path = vec![path[0]];
     let mut prev_horizontal = path[0].0 == path[1].0;
-    let (mut prev_x, mut prev_y) = path[0];
-    for &(step_x, step_y) in path.iter().skip(1) {
+    for window in path.windows(2).skip(1) {
+        let (prev_x, prev_y) = (*window)[0];
+        let (step_x, _) = (*window)[1];
         let cur_horizontal = step_x == prev_x;
         if cur_horizontal != prev_horizontal {
             consolidated_path.push((prev_x, prev_y));
         }
-        prev_x = step_x;
-        prev_y = step_y;
         prev_horizontal = cur_horizontal;
     }
     if consolidated_path[consolidated_path.len() - 1] != path[path.len() - 1] {
