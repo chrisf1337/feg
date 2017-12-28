@@ -1,5 +1,6 @@
 #![feature(use_nested_groups)]
 extern crate ggez;
+#[macro_use] extern crate indoc;
 
 mod dataparser;
 
@@ -9,7 +10,9 @@ use ggez::graphics::{Drawable, DrawMode, Point2, DrawParam, Rect, Image, spriteb
 use ggez::conf::{WindowMode, WindowSetup};
 use std::env;
 use std::path;
-use std::collections::BinaryHeap;
+use std::cmp::Ordering;
+use std::u32;
+use std::collections::{HashMap, BinaryHeap};
 
 #[derive(Debug)]
 struct MainState {
@@ -43,10 +46,10 @@ impl MainState {
         let walls = dataparser::parse_walls("walls.txt", 10, 10)?;
         let mut walls_sb = SpriteBatch::new(graphics::Image::new(ctx, "/wall.png")?);
 
-        for (r, row) in walls.iter().enumerate() {
-            for (c, is_wall) in row.iter().enumerate() {
+        for (x, row) in walls.iter().enumerate() {
+            for (y, is_wall) in row.iter().enumerate() {
                 if *is_wall {
-                    let (rect_x, rect_y) = grid_to_screen_coord((c as u32, r as u32));
+                    let (rect_x, rect_y) = grid_to_screen_coord((x as u32, y as u32));
                     walls_sb.add(DrawParam {
                         dest: Point2::new(rect_x as f32, rect_y as f32),
                         ..DrawParam::default()
@@ -64,6 +67,115 @@ impl MainState {
             walls_sb
         })
     }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+struct DaState {
+    dist: u32,
+    pos: (u32, u32)
+}
+
+impl DaState {
+    fn new(dist: u32, pos: (u32, u32)) -> Self {
+        DaState { dist, pos }
+    }
+}
+
+impl PartialOrd for DaState {
+    fn partial_cmp(&self, other: &DaState) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for DaState {
+    fn cmp(&self, other: &DaState) -> Ordering {
+        other.dist.cmp(&self.dist).then_with(|| self.pos.cmp(&other.pos))
+    }
+}
+
+fn is_point_valid((point_x, point_y): (u32, u32), max_w: u32, max_h: u32) -> bool {
+    point_x < max_w && point_y < max_h
+}
+
+// Returns vec of ((coord_x, coord_y), cost)
+// Right now, all tile movement costs are 1.
+fn get_neighbors((point_x, point_y): (u32, u32), walls: &Vec<Vec<bool>>) -> Vec<((u32, u32), u32)> {
+    let mut neighbors = vec![];
+    if point_x >= 1 &&
+       is_point_valid((point_x - 1, point_y), GRID_N_CELL_WIDTH, GRID_N_CELL_HEIGHT) &&
+       !walls[(point_x - 1) as usize][point_y as usize] {
+        neighbors.push(((point_x - 1, point_y), 1));
+    }
+    if is_point_valid((point_x + 1, point_y), GRID_N_CELL_WIDTH, GRID_N_CELL_HEIGHT) &&
+       !walls[(point_x + 1) as usize][point_y as usize] {
+       neighbors.push(((point_x + 1, point_y), 1));
+    }
+    if point_y >= 1 &&
+       is_point_valid((point_x, point_y - 1), GRID_N_CELL_WIDTH, GRID_N_CELL_HEIGHT) &&
+       !walls[point_x as usize][(point_y - 1) as usize] {
+        neighbors.push(((point_x, point_y - 1), 1));
+    }
+    if is_point_valid((point_x, point_y + 1), GRID_N_CELL_WIDTH, GRID_N_CELL_HEIGHT) &&
+       !walls[point_x as usize][(point_y + 1) as usize] {
+       neighbors.push(((point_x, point_y + 1), 1));
+    }
+    neighbors
+}
+
+// Dijkstra's algorithm
+// Params: (x, y) coords of source and destination
+fn compute_path_costs(src: (u32, u32), walls: &Vec<Vec<bool>>) -> (HashMap<(u32, u32), (u32, u32)>, HashMap<(u32, u32), u32>) {
+    let mut frontier = BinaryHeap::new();
+    frontier.push(DaState::new(0, src));
+    let mut came_from = HashMap::new();
+    let mut cost_so_far = HashMap::new();
+    cost_so_far.insert(src.clone(), 0);
+
+    while !frontier.is_empty() {
+        let current = frontier.pop().unwrap();
+        for (neighbor_coord, cost) in get_neighbors(current.pos, walls) {
+            let new_cost = cost_so_far[&current.pos] + cost;
+            if !cost_so_far.contains_key(&neighbor_coord) || new_cost < cost_so_far[&neighbor_coord] {
+                cost_so_far.insert(neighbor_coord.clone(), new_cost);
+                frontier.push(DaState::new(new_cost, neighbor_coord.clone()));
+                came_from.insert(neighbor_coord.clone(), current.pos);
+            }
+        }
+    }
+    (came_from, cost_so_far)
+}
+
+fn get_path(dest: (u32, u32), paths: HashMap<(u32, u32), (u32, u32)>) -> Vec<(u32, u32)> {
+    let mut path = vec![];
+    let mut cur = dest;
+    while paths.contains_key(&cur) {
+        path.push(cur);
+        cur = paths[&cur];
+    }
+    path.reverse();
+    path
+}
+
+fn consolidate_path(path: Vec<(u32, u32)>) -> Vec<(u32, u32)> {
+    if path.len() <= 1 {
+        return path.clone();
+    }
+    let mut consolidated_path = vec![path[0]];
+    let mut prev_horizontal = path[0].0 == path[1].0;
+    let (mut prev_x, mut prev_y) = path[0];
+    for &(step_x, step_y) in path.iter().skip(1) {
+        let cur_horizontal = step_x == prev_x;
+        if cur_horizontal != prev_horizontal {
+            consolidated_path.push((prev_x, prev_y));
+        }
+        prev_x = step_x;
+        prev_y = step_y;
+        prev_horizontal = cur_horizontal;
+    }
+    if consolidated_path[consolidated_path.len() - 1] != path[path.len() - 1] {
+        consolidated_path.push(path[path.len() - 1]);
+    }
+    consolidated_path
 }
 
 fn draw_grid(ctx: &mut Context) -> GameResult<()> {
@@ -162,13 +274,19 @@ fn main() {
         .window_setup(WindowSetup::default().title("FEG"))
         .window_mode(WindowMode::default().dimensions(WINDOW_WIDTH, WINDOW_HEIGHT));
 
+    println!("{}", env!("CARGO_MANIFEST_DIR"));
     if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
         let mut path = path::PathBuf::from(manifest_dir);
         path.push("resources");
         cb = cb.add_resource_path(path);
+    } else {
+        println!("Missing CARGO_MANIFEST_DIR environment variable");
+        std::process::exit(1);
     }
 
     let ctx = &mut cb.build().unwrap();
     let state = &mut MainState::new(ctx).unwrap();
+    let (paths, costs) = compute_path_costs((0, 0), &state.walls);
+    println!("{:?}", get_path((4, 2), paths));
     event::run(ctx, state).unwrap();
 }
