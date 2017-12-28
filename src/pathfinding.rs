@@ -1,11 +1,11 @@
 use std::cmp::Ordering;
 use std::u32;
-use std::collections::{HashMap, BinaryHeap};
+use std::collections::{BinaryHeap, HashMap};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 struct DaState {
     dist: u32,
-    pos: (u32, u32)
+    pos: (u32, u32),
 }
 
 impl DaState {
@@ -22,7 +22,10 @@ impl PartialOrd for DaState {
 
 impl Ord for DaState {
     fn cmp(&self, other: &DaState) -> Ordering {
-        other.dist.cmp(&self.dist).then_with(|| self.pos.cmp(&other.pos))
+        other
+            .dist
+            .cmp(&self.dist)
+            .then_with(|| self.pos.cmp(&other.pos))
     }
 }
 
@@ -32,32 +35,45 @@ fn is_point_valid((point_x, point_y): (u32, u32), max_w: u32, max_h: u32) -> boo
 
 // Returns vec of ((coord_x, coord_y), cost)
 // Right now, all tile movement costs are 1.
-fn get_neighbors((point_x, point_y): (u32, u32), walls: &Vec<Vec<bool>>, max_w: u32, max_h: u32) -> Vec<((u32, u32), u32)> {
+fn get_neighbors(
+    (point_x, point_y): (u32, u32),
+    walls: &Vec<Vec<bool>>,
+    max_w: u32,
+    max_h: u32,
+) -> Vec<((u32, u32), u32)> {
     let mut neighbors = vec![];
-    if point_x >= 1 &&
-       is_point_valid((point_x - 1, point_y), max_w, max_h) &&
-       !walls[(point_x - 1) as usize][point_y as usize] {
+    if point_x >= 1 && is_point_valid((point_x - 1, point_y), max_w, max_h)
+        && !walls[(point_x - 1) as usize][point_y as usize]
+    {
         neighbors.push(((point_x - 1, point_y), 1));
     }
-    if is_point_valid((point_x + 1, point_y), max_w, max_h) &&
-       !walls[(point_x + 1) as usize][point_y as usize] {
-       neighbors.push(((point_x + 1, point_y), 1));
+    if is_point_valid((point_x + 1, point_y), max_w, max_h)
+        && !walls[(point_x + 1) as usize][point_y as usize]
+    {
+        neighbors.push(((point_x + 1, point_y), 1));
     }
-    if point_y >= 1 &&
-       is_point_valid((point_x, point_y - 1), max_w, max_h) &&
-       !walls[point_x as usize][(point_y - 1) as usize] {
+    if point_y >= 1 && is_point_valid((point_x, point_y - 1), max_w, max_h)
+        && !walls[point_x as usize][(point_y - 1) as usize]
+    {
         neighbors.push(((point_x, point_y - 1), 1));
     }
-    if is_point_valid((point_x, point_y + 1), max_w, max_h) &&
-       !walls[point_x as usize][(point_y + 1) as usize] {
-       neighbors.push(((point_x, point_y + 1), 1));
+    if is_point_valid((point_x, point_y + 1), max_w, max_h)
+        && !walls[point_x as usize][(point_y + 1) as usize]
+    {
+        neighbors.push(((point_x, point_y + 1), 1));
     }
     neighbors
 }
 
 // Dijkstra's algorithm
 // Params: (x, y) coords of source and destination
-pub fn compute_path_costs(src: (u32, u32), walls: &Vec<Vec<bool>>, max_w: u32, max_h: u32) -> (HashMap<(u32, u32), (u32, u32)>, HashMap<(u32, u32), u32>) {
+// Returns map of backpointers indicating best paths to each coord, map of costs to each coord
+pub fn compute_path_costs(
+    src: (u32, u32),
+    walls: &Vec<Vec<bool>>,
+    max_w: u32,
+    max_h: u32,
+) -> (HashMap<(u32, u32), (u32, u32)>, HashMap<(u32, u32), u32>) {
     let mut frontier = BinaryHeap::new();
     frontier.push(DaState::new(0, src));
     let mut came_from = HashMap::new();
@@ -68,7 +84,8 @@ pub fn compute_path_costs(src: (u32, u32), walls: &Vec<Vec<bool>>, max_w: u32, m
         let current = frontier.pop().unwrap();
         for (neighbor_coord, cost) in get_neighbors(current.pos, walls, max_w, max_h) {
             let new_cost = cost_so_far[&current.pos] + cost;
-            if !cost_so_far.contains_key(&neighbor_coord) || new_cost < cost_so_far[&neighbor_coord] {
+            if !cost_so_far.contains_key(&neighbor_coord) || new_cost < cost_so_far[&neighbor_coord]
+            {
                 cost_so_far.insert(neighbor_coord.clone(), new_cost);
                 frontier.push(DaState::new(new_cost, neighbor_coord.clone()));
                 came_from.insert(neighbor_coord.clone(), current.pos);
@@ -78,6 +95,7 @@ pub fn compute_path_costs(src: (u32, u32), walls: &Vec<Vec<bool>>, max_w: u32, m
     (came_from, cost_so_far)
 }
 
+// Reads from the map of backpointers to get the best path to dest. Does not include the src coord.
 pub fn get_path(dest: (u32, u32), paths: HashMap<(u32, u32), (u32, u32)>) -> Vec<(u32, u32)> {
     let mut path = vec![];
     let mut cur = dest;
@@ -89,6 +107,8 @@ pub fn get_path(dest: (u32, u32), paths: HashMap<(u32, u32), (u32, u32)>) -> Vec
     path
 }
 
+// Combines path from get_path into endpoints for line segments that can be
+// passed to the draw function
 pub fn consolidate_path(path: Vec<(u32, u32)>) -> Vec<(u32, u32)> {
     if path.len() <= 1 {
         return path.clone();
@@ -109,4 +129,62 @@ pub fn consolidate_path(path: Vec<(u32, u32)>) -> Vec<(u32, u32)> {
         consolidated_path.push(path[path.len() - 1]);
     }
     consolidated_path
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_consolidate_path_simple_1() {
+        let path = vec![];
+        let cpath = consolidate_path(path);
+        assert_eq!(cpath, vec![]);
+    }
+
+    #[test]
+    fn test_consolidate_path_simple_2() {
+        let path = vec![(0, 0)];
+        let cpath = consolidate_path(path);
+        assert_eq!(cpath, vec![(0, 0)]);
+    }
+
+    #[test]
+    fn test_consolidate_path_simple_3() {
+        let path = vec![(0, 0), (1, 0)];
+        let cpath = consolidate_path(path);
+        assert_eq!(cpath, vec![(0, 0), (1, 0)]);
+    }
+
+    #[test]
+    fn test_consolidate_path_simple_4() {
+        let path = vec![(0, 0), (1, 0), (2, 0)];
+        let cpath = consolidate_path(path);
+        assert_eq!(cpath, vec![(0, 0), (2, 0)]);
+    }
+
+    #[test]
+    fn test_consolidate_path_with_turn_1() {
+        let path = vec![(0, 0), (1, 0), (2, 0), (2, 1)];
+        let cpath = consolidate_path(path);
+        assert_eq!(cpath, vec![(0, 0), (2, 0), (2, 1)]);
+    }
+
+    #[test]
+    fn test_consolidate_path_with_turn_2() {
+        let path = vec![
+            (1, 0),
+            (2, 0),
+            (3, 0),
+            (4, 0),
+            (5, 0),
+            (6, 0),
+            (6, 1),
+            (6, 2),
+            (5, 2),
+            (4, 2),
+        ];
+        let cpath = consolidate_path(path);
+        assert_eq!(cpath, vec![(1, 0), (6, 0), (6, 2), (4, 2)]);
+    }
 }

@@ -1,14 +1,14 @@
-#![feature(use_nested_groups)]
 extern crate ggez;
-#[macro_use] extern crate indoc;
+#[macro_use]
+extern crate indoc;
 
 mod dataparser;
 mod pathfinding;
 mod mainstate;
 
-use ggez::{Context, ContextBuilder, GameResult, graphics, timer, event};
-use ggez::event::{MouseState, EventHandler};
-use ggez::graphics::{Drawable, DrawMode, Point2, DrawParam, Rect};
+use ggez::{event, graphics, timer, Context, ContextBuilder, GameResult};
+use ggez::event::{EventHandler, MouseState};
+use ggez::graphics::{DrawMode, DrawParam, Drawable, Point2, Rect};
 use ggez::conf::{WindowMode, WindowSetup};
 use std::env;
 use std::path;
@@ -18,20 +18,36 @@ use mainstate::*;
 
 fn draw_grid(ctx: &mut Context, main_state: &MainState) -> GameResult<()> {
     for i in 0..main_state.grid_n_cell_height + 1 {
-        graphics::line(ctx,
-                       &[Point2::new((main_state.horizontal_padding + i * main_state.grid_cell_dim) as f32,
-                                     main_state.vertical_padding as f32),
-                         Point2::new((main_state.horizontal_padding + i * main_state.grid_cell_dim) as f32,
-                                     (main_state.window_height - main_state.vertical_padding) as f32)],
-                       main_state.grid_line_width as f32)?;
+        graphics::line(
+            ctx,
+            &[
+                Point2::new(
+                    (main_state.horizontal_padding + i * main_state.grid_cell_dim) as f32,
+                    main_state.vertical_padding as f32,
+                ),
+                Point2::new(
+                    (main_state.horizontal_padding + i * main_state.grid_cell_dim) as f32,
+                    (main_state.window_height - main_state.vertical_padding) as f32,
+                ),
+            ],
+            main_state.grid_line_width as f32,
+        )?;
     }
     for i in 0..main_state.grid_n_cell_width + 1 {
-        graphics::line(ctx,
-                       &[Point2::new(main_state.horizontal_padding as f32,
-                                     (main_state.vertical_padding + i * main_state.grid_cell_dim) as f32),
-                         Point2::new((main_state.window_width - main_state.horizontal_padding) as f32,
-                                     (main_state.vertical_padding + i * main_state.grid_cell_dim) as f32)],
-                       main_state.grid_line_width as f32)?;
+        graphics::line(
+            ctx,
+            &[
+                Point2::new(
+                    main_state.horizontal_padding as f32,
+                    (main_state.vertical_padding + i * main_state.grid_cell_dim) as f32,
+                ),
+                Point2::new(
+                    (main_state.window_width - main_state.horizontal_padding) as f32,
+                    (main_state.vertical_padding + i * main_state.grid_cell_dim) as f32,
+                ),
+            ],
+            main_state.grid_line_width as f32,
+        )?;
     }
     Ok(())
 }
@@ -66,34 +82,44 @@ impl EventHandler for MainState {
                 let (rect_x, rect_y) = self.grid_to_screen_coord((grid_x, grid_y));
                 let old_color = graphics::get_color(ctx);
                 graphics::set_color(ctx, graphics::Color::from_rgb(234, 152, 174))?;
-                graphics::rectangle(ctx,
-                                    DrawMode::Fill,
-                                    Rect::new(rect_x as f32, rect_y as f32,
-                                              (self.grid_cell_dim - self.grid_line_width) as f32,
-                                              (self.grid_cell_dim - self.grid_line_width) as f32))?;
+                graphics::rectangle(
+                    ctx,
+                    DrawMode::Fill,
+                    Rect::new(
+                        rect_x as f32,
+                        rect_y as f32,
+                        (self.grid_cell_dim - self.grid_line_width) as f32,
+                        (self.grid_cell_dim - self.grid_line_width) as f32,
+                    ),
+                )?;
                 graphics::set_color(ctx, old_color)?;
             }
-            None => ()
+            None => (),
         }
 
         // Draw animated sprite
         let screen_coord = self.grid_to_screen_coord((0, 0));
-        self.konrad_imgs[self.konrad_tick as usize].draw_ex(ctx, DrawParam {
-            dest: Point2::new(screen_coord.0 as f32, screen_coord.1 as f32),
-            ..DrawParam::default()
-        })?;
+        self.konrad_imgs[self.konrad_tick as usize].draw_ex(
+            ctx,
+            DrawParam {
+                dest: Point2::new(screen_coord.0 as f32, screen_coord.1 as f32),
+                ..DrawParam::default()
+            },
+        )?;
         graphics::present(ctx);
         timer::yield_now();
         Ok(())
     }
 
-    fn mouse_motion_event(&mut self,
-                          _ctx: &mut Context,
-                          _state: MouseState,
-                          x: i32,
-                          y: i32,
-                          _xrel: i32,
-                          _yrel: i32) {
+    fn mouse_motion_event(
+        &mut self,
+        _ctx: &mut Context,
+        _state: MouseState,
+        x: i32,
+        y: i32,
+        _xrel: i32,
+        _yrel: i32,
+    ) {
         self.mouse_coords = (x as u32, y as u32);
     }
 }
@@ -117,7 +143,12 @@ fn main() {
 
     let ctx = &mut cb.build().unwrap();
     let state = &mut MainState::new(ctx, window_width, window_height).unwrap();
-    let (paths, costs) = compute_path_costs((0, 0), &state.walls, state.grid_n_cell_width, state.grid_n_cell_width);
+    let (paths, costs) = compute_path_costs(
+        (0, 0),
+        &state.walls,
+        state.grid_n_cell_width,
+        state.grid_n_cell_width,
+    );
     println!("{:?}", get_path((4, 2), paths));
     event::run(ctx, state).unwrap();
 }

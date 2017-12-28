@@ -1,5 +1,6 @@
 use ggez::{Context, GameResult};
-use ggez::graphics::{Font, Point2, DrawParam, Image, spritebatch::*};
+use ggez::graphics::{DrawParam, Font, Image, Point2};
+use ggez::graphics::spritebatch::*;
 use dataparser;
 
 #[derive(Debug)]
@@ -18,9 +19,8 @@ pub struct MainState {
     pub grid_line_width: u32,
     pub grid_n_cell_width: u32,
     pub grid_n_cell_height: u32,
-    pub grid_cell_dim: u32
+    pub grid_cell_dim: u32,
 }
-
 
 impl MainState {
     pub fn new(ctx: &mut Context, window_width: u32, window_height: u32) -> GameResult<Self> {
@@ -31,11 +31,11 @@ impl MainState {
             Image::new(ctx, "/konrad-commander-attack-3.png")?,
             Image::new(ctx, "/konrad-commander-attack-4.png")?,
         ];
-        let mut walls_sb = SpriteBatch::new(Image::new(ctx, "/wall.png")?);
+        let walls_sb = SpriteBatch::new(Image::new(ctx, "/wall.png")?);
         let walls = dataparser::parse_walls("walls.txt", 10, 10)?;
 
         let vertical_padding = 30;
-        let grid_n_cell_height = 10;  // number of verical grid cells
+        let grid_n_cell_height = 10; // number of verical grid cells
         let mut main_state = MainState {
             mouse_coords: (0, 0),
             font: Font::new(ctx, "/DejaVuSerif.ttf", 10)?,
@@ -48,8 +48,8 @@ impl MainState {
             window_height: window_height,
             horizontal_padding: 270,
             vertical_padding,
-            grid_line_width: 2,  // should be even
-            grid_n_cell_width: 10,  // number of horizontal grid cells
+            grid_line_width: 2,    // should be even
+            grid_n_cell_width: 10, // number of horizontal grid cells
             grid_n_cell_height,
             grid_cell_dim: (window_height - 2 * vertical_padding) / grid_n_cell_height, // 74
         };
@@ -70,17 +70,24 @@ impl MainState {
     }
 
     pub fn screen_to_grid_coord(&self, (screen_x, screen_y): (u32, u32)) -> Option<(u32, u32)> {
-        if screen_x < self.horizontal_padding || screen_x > self.window_width - self.horizontal_padding ||
-        screen_y < self.vertical_padding || screen_y > self.window_height - self.vertical_padding {
+        if screen_x < self.horizontal_padding
+            || screen_x > self.window_width - self.horizontal_padding
+            || screen_y < self.vertical_padding
+            || screen_y > self.window_height - self.vertical_padding
+        {
             return None;
         }
-        Some(((screen_x - self.horizontal_padding) / self.grid_cell_dim,
-            (screen_y - self.vertical_padding) / self.grid_cell_dim))
+        Some((
+            (screen_x - self.horizontal_padding) / self.grid_cell_dim,
+            (screen_y - self.vertical_padding) / self.grid_cell_dim,
+        ))
     }
 
     // Screen coord is the top left hand corner of the cell, not including line width
     pub fn grid_to_screen_coord(&self, (grid_x, grid_y): (u32, u32)) -> (u32, u32) {
-        (self.horizontal_padding + grid_x * self.grid_cell_dim + self.grid_line_width / 2,
-        self.vertical_padding + grid_y * self.grid_cell_dim + self.grid_line_width / 2)
+        (
+            self.horizontal_padding + grid_x * self.grid_cell_dim + self.grid_line_width / 2,
+            self.vertical_padding + grid_y * self.grid_cell_dim + self.grid_line_width / 2,
+        )
     }
 }
