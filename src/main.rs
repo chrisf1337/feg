@@ -13,7 +13,6 @@ use ggez::conf::{WindowMode, WindowSetup};
 use std::env;
 use std::path;
 
-use pathfinding::*;
 use mainstate::*;
 
 fn draw_grid(ctx: &mut Context, main_state: &MainState) -> GameResult<()> {
@@ -79,6 +78,24 @@ impl EventHandler for MainState {
         // Draw highlighted grid cell
         match self.screen_to_grid_coord(self.mouse_coords) {
             Some((grid_x, grid_y)) => {
+                let cpath = pathfinding::consolidate_path(pathfinding::get_path(
+                    (grid_x, grid_y),
+                    &self.paths,
+                )).into_iter()
+                    .map(|p| self.grid_to_screen_coord_center(p))
+                    .collect::<Vec<(u32, u32)>>();
+                for segment in cpath.windows(2) {
+                    let start = segment[0];
+                    let end = segment[1];
+                    graphics::line(
+                        ctx,
+                        &[
+                            Point2::new(start.0 as f32, start.1 as f32),
+                            Point2::new(end.0 as f32, end.1 as f32),
+                        ],
+                        10.0,
+                    )?;
+                }
                 let (rect_x, rect_y) = self.grid_to_screen_coord((grid_x, grid_y));
                 let old_color = graphics::get_color(ctx);
                 graphics::set_color(ctx, graphics::Color::from_rgb(234, 152, 174))?;
@@ -143,12 +160,5 @@ fn main() {
 
     let ctx = &mut cb.build().unwrap();
     let state = &mut MainState::new(ctx, window_width, window_height).unwrap();
-    let (paths, costs) = compute_path_costs(
-        (0, 0),
-        &state.walls,
-        state.grid_n_cell_width,
-        state.grid_n_cell_width,
-    );
-    println!("{:?}", get_path((4, 2), paths));
     event::run(ctx, state).unwrap();
 }

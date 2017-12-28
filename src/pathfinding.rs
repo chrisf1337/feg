@@ -96,7 +96,7 @@ pub fn compute_path_costs(
 }
 
 // Reads from the map of backpointers to get the best path to dest. Does not include the src coord.
-pub fn get_path(dest: (u32, u32), paths: HashMap<(u32, u32), (u32, u32)>) -> Vec<(u32, u32)> {
+pub fn get_path(dest: (u32, u32), paths: &HashMap<(u32, u32), (u32, u32)>) -> Vec<(u32, u32)> {
     let mut path = vec![];
     let mut cur = dest;
     while paths.contains_key(&cur) {
