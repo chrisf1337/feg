@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::u32;
 use std::collections::{BinaryHeap, HashMap};
+use terrain::Terrain;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 struct DaState {
@@ -37,28 +38,28 @@ fn is_point_valid((point_x, point_y): (u32, u32), max_w: u32, max_h: u32) -> boo
 // Right now, all tile movement costs are 1.
 fn get_neighbors(
     (point_x, point_y): (u32, u32),
-    walls: &Vec<Vec<bool>>,
+    terrain: &Vec<Vec<Terrain>>,
     max_w: u32,
     max_h: u32,
 ) -> Vec<((u32, u32), u32)> {
     let mut neighbors = vec![];
     if point_x >= 1 && is_point_valid((point_x - 1, point_y), max_w, max_h)
-        && !walls[(point_x - 1) as usize][point_y as usize]
+        && terrain[(point_x - 1) as usize][point_y as usize] != Terrain::Wall
     {
         neighbors.push(((point_x - 1, point_y), 1));
     }
     if is_point_valid((point_x + 1, point_y), max_w, max_h)
-        && !walls[(point_x + 1) as usize][point_y as usize]
+        && terrain[(point_x + 1) as usize][point_y as usize] != Terrain::Wall
     {
         neighbors.push(((point_x + 1, point_y), 1));
     }
     if point_y >= 1 && is_point_valid((point_x, point_y - 1), max_w, max_h)
-        && !walls[point_x as usize][(point_y - 1) as usize]
+        && terrain[point_x as usize][(point_y - 1) as usize] != Terrain::Wall
     {
         neighbors.push(((point_x, point_y - 1), 1));
     }
     if is_point_valid((point_x, point_y + 1), max_w, max_h)
-        && !walls[point_x as usize][(point_y + 1) as usize]
+        && terrain[point_x as usize][(point_y + 1) as usize] != Terrain::Wall
     {
         neighbors.push(((point_x, point_y + 1), 1));
     }
@@ -70,7 +71,7 @@ fn get_neighbors(
 // Returns map of backpointers indicating best paths to each coord, map of costs to each coord
 pub fn compute_path_costs(
     src: (u32, u32),
-    walls: &Vec<Vec<bool>>,
+    terrain: &Vec<Vec<Terrain>>,
     max_w: u32,
     max_h: u32,
     max_dist: u32,
@@ -83,7 +84,7 @@ pub fn compute_path_costs(
 
     while !frontier.is_empty() {
         let current = frontier.pop().unwrap();
-        for (neighbor_coord, cost) in get_neighbors(current.pos, walls, max_w, max_h) {
+        for (neighbor_coord, cost) in get_neighbors(current.pos, terrain, max_w, max_h) {
             let new_cost = cost_so_far[&current.pos] + cost;
             if new_cost <= max_dist
                 && (!cost_so_far.contains_key(&neighbor_coord)

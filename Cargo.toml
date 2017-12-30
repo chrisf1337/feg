@@ -6,3 +6,4 @@ authors = ["chrisf"]
 [dependencies]
 ggez = { git = "https://github.com/ggez/ggez.git", branch = "master" }
 indoc = "*"
+decimal = "*"

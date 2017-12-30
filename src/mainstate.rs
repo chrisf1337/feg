@@ -4,6 +4,7 @@ use ggez::graphics::spritebatch::*;
 use std::collections::HashMap;
 use dataparser;
 use pathfinding;
+use terrain::Terrain;
 
 #[derive(Debug)]
 pub struct MainState {
@@ -11,8 +12,9 @@ pub struct MainState {
     pub font: Font,
     pub konrad_imgs: Vec<Image>,
     pub konrad_tick: f32,
-    pub walls: Vec<Vec<bool>>,
-    pub walls_sb: SpriteBatch,
+    pub terrain: Vec<Vec<Terrain>>,
+    pub wall_sb: SpriteBatch,
+    pub sand_sb: SpriteBatch,
     pub fps: u32,
     pub window_width: u32,
     pub window_height: u32,
@@ -39,8 +41,9 @@ impl MainState {
             Image::new(ctx, "/konrad-commander-attack-3.png")?,
             Image::new(ctx, "/konrad-commander-attack-4.png")?,
         ];
-        let walls_sb = SpriteBatch::new(Image::new(ctx, "/wall.png")?);
-        let walls = dataparser::parse_walls("walls.txt", 10, 10)?;
+        let wall_sb = SpriteBatch::new(Image::new(ctx, "/wall.png")?);
+        let sand_sb = SpriteBatch::new(Image::new(ctx, "/sand.png")?);
+        let terrain = dataparser::parse_walls("terrain.txt", 10, 10)?;
 
         let vertical_padding = 30;
         let grid_n_cell_width = 10; // number of horizontal grid cells
@@ -48,7 +51,7 @@ impl MainState {
 
         let (paths, costs) = pathfinding::compute_path_costs(
             (3, 3),
-            &walls,
+            &terrain,
             grid_n_cell_width,
             grid_n_cell_height,
             4,
@@ -59,8 +62,9 @@ impl MainState {
             font: Font::new(ctx, "/DejaVuSerif.ttf", 10)?,
             konrad_imgs,
             konrad_tick: 0.0,
-            walls: walls.clone(),
-            walls_sb,
+            terrain: terrain.clone(),
+            wall_sb,
+            sand_sb,
 
             fps: 60,
             window_width: window_width,
@@ -83,14 +87,23 @@ impl MainState {
             grid_coord_to_unit_map: HashMap::new(),
         };
 
-        for (x, row) in walls.iter().enumerate() {
-            for (y, is_wall) in row.iter().enumerate() {
-                if *is_wall {
-                    let (rect_x, rect_y) = main_state.grid_to_screen_coord((x as u32, y as u32));
-                    main_state.walls_sb.add(DrawParam {
-                        dest: Point2::new(rect_x as f32, rect_y as f32),
-                        ..DrawParam::default()
-                    });
+        for (x, col) in terrain.iter().enumerate() {
+            for (y, terrain_type) in col.iter().enumerate() {
+                let (rect_x, rect_y) = main_state.grid_to_screen_coord((x as u32, y as u32));
+                match terrain_type {
+                    &Terrain::Wall => {
+                        main_state.wall_sb.add(DrawParam {
+                            dest: Point2::new(rect_x as f32, rect_y as f32),
+                            ..DrawParam::default()
+                        });
+                    }
+                    &Terrain::Sand => {
+                        main_state.sand_sb.add(DrawParam {
+                            dest: Point2::new(rect_x as f32, rect_y as f32),
+                            ..DrawParam::default()
+                        });
+                    }
+                    _ => (),
                 }
             }
         }

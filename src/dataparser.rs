@@ -4,6 +4,7 @@ use std::path::Path;
 use std::io;
 use std::io::{BufRead, BufReader};
 use ggez::error::*;
+use terrain::Terrain;
 
 pub type Result<T> = result::Result<T, DataParserErr>;
 
@@ -35,8 +36,8 @@ pub fn parse_walls_from_bufread<T: BufRead + Sized, P: AsRef<Path>>(
     path: P,
     max_w: usize,
     max_h: usize,
-) -> Result<Vec<Vec<bool>>> {
-    let mut walls: Vec<Vec<bool>> = vec![vec![false; max_h]; max_w];
+) -> Result<Vec<Vec<Terrain>>> {
+    let mut terrain = vec![vec![Terrain::None; max_h]; max_w];
     for (y, line) in buf_reader.lines().enumerate() {
         if y >= max_h {
             return Err(InvalidWallData(path.as_ref().to_str().unwrap().to_string()));
@@ -47,18 +48,23 @@ pub fn parse_walls_from_bufread<T: BufRead + Sized, P: AsRef<Path>>(
                 return Err(InvalidWallData(path.as_ref().to_str().unwrap().to_string()));
             }
             match ch {
-                '0' => walls[x][y] = false,
-                '1' => walls[x][y] = true,
+                '0' => terrain[x][y] = Terrain::None,
+                'w' => terrain[x][y] = Terrain::Wall,
+                's' => terrain[x][y] = Terrain::Sand,
                 _ => return Err(InvalidWallData(path.as_ref().to_str().unwrap().to_string())),
             }
         }
     }
-    Ok(walls)
+    Ok(terrain)
 }
 
 // Opens from "resources" dir. Caller does not need to insert leading slash
 // (this is different from how ggez does it).
-pub fn parse_walls<P: AsRef<Path>>(path: P, max_w: usize, max_h: usize) -> Result<Vec<Vec<bool>>> {
+pub fn parse_walls<P: AsRef<Path>>(
+    path: P,
+    max_w: usize,
+    max_h: usize,
+) -> Result<Vec<Vec<Terrain>>> {
     let f = File::open(Path::new("resources").join(&path))?;
     let mut buf_reader = BufReader::new(f);
     parse_walls_from_bufread(&mut buf_reader, &path, max_w, max_h)

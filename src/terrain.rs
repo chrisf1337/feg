@@ -1,4 +1,14 @@
-enum Terrain {
+use decimal;
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Terrain {
     Wall,
-    Sand(1.5)
+    Sand,
+    None,
+}
+
+impl Terrain {
+    pub fn cost(&self) -> decimal::d128 {
+        d128!(1.0)
+    }
 }
