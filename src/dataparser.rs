@@ -73,6 +73,7 @@ pub fn parse_walls<P: AsRef<Path>>(
 #[cfg(test)]
 mod test {
     use super::parse_walls_from_bufread;
+    use terrain::Terrain;
     use std::io::Cursor;
 
     #[test]
@@ -80,8 +81,8 @@ mod test {
         let walls = indoc!(
             "
             0000
-            0010
-            0100
+            00w0
+            0s00
             0000
         "
         );
@@ -90,11 +91,13 @@ mod test {
         assert!(result.is_ok());
         let parsed_walls = result.unwrap();
         for (x, v) in parsed_walls.iter().enumerate() {
-            for (y, is_wall) in v.iter().enumerate() {
-                if (x == 2 && y == 1) || (x == 1 && y == 2) {
-                    assert_eq!(*is_wall, true);
+            for (y, terrain) in v.iter().enumerate() {
+                if x == 2 && y == 1 {
+                    assert_eq!(terrain, &Terrain::Wall);
+                } else if x == 1 && y == 2 {
+                    assert_eq!(terrain, &Terrain::Sand);
                 } else {
-                    assert_eq!(*is_wall, false);
+                    assert_eq!(terrain, &Terrain::None);
                 }
             }
         }
