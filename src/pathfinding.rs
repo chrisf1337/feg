@@ -73,15 +73,19 @@ pub fn compute_path_costs(
     walls: &Vec<Vec<bool>>,
     max_w: u32,
     max_h: u32,
+    max_dist: u32,
 ) -> (HashMap<(u32, u32), (u32, u32)>, HashMap<(u32, u32), u32>) {
     let mut frontier = BinaryHeap::new();
     frontier.push(DaState::new(0, src));
     let mut came_from = HashMap::new();
     let mut cost_so_far = HashMap::new();
-    cost_so_far.insert(src.clone(), 0);
+    cost_so_far.insert(src, 0);
 
     while !frontier.is_empty() {
         let current = frontier.pop().unwrap();
+        if current.dist >= max_dist {
+            continue;
+        }
         for (neighbor_coord, cost) in get_neighbors(current.pos, walls, max_w, max_h) {
             let new_cost = cost_so_far[&current.pos] + cost;
             if !cost_so_far.contains_key(&neighbor_coord) || new_cost < cost_so_far[&neighbor_coord]

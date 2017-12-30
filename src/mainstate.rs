@@ -25,6 +25,9 @@ pub struct MainState {
     pub paths: HashMap<(u32, u32), (u32, u32)>,
     pub costs: HashMap<(u32, u32), u32>,
     pub path_line_width: u32,
+    pub cursor_img: Image,
+    pub selection: Option<(u32, u32)>,
+    pub grid_coord_to_unit_map: HashMap<(u32, u32), ()>,
 }
 
 impl MainState {
@@ -43,8 +46,13 @@ impl MainState {
         let grid_n_cell_width = 10; // number of horizontal grid cells
         let grid_n_cell_height = 10; // number of verical grid cells
 
-        let (paths, costs) =
-            pathfinding::compute_path_costs((0, 0), &walls, grid_n_cell_width, grid_n_cell_height);
+        let (paths, costs) = pathfinding::compute_path_costs(
+            (3, 3),
+            &walls,
+            grid_n_cell_width,
+            grid_n_cell_height,
+            4,
+        );
 
         let mut main_state = MainState {
             mouse_coords: (0, 0),
@@ -70,6 +78,9 @@ impl MainState {
 
             // Width of the line used to draw the path indicator.
             path_line_width: 10,
+            cursor_img: Image::new(ctx, "/cursor.png")?,
+            selection: None,
+            grid_coord_to_unit_map: HashMap::new(),
         };
 
         for (x, row) in walls.iter().enumerate() {

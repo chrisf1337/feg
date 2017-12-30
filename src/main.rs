@@ -9,8 +9,8 @@ mod pathfinding;
 mod mainstate;
 
 use ggez::{event, graphics, timer, Context, ContextBuilder, GameResult};
-use ggez::event::{EventHandler, MouseState};
-use ggez::graphics::{DrawMode, DrawParam, Drawable, Point2, Rect};
+use ggez::event::{EventHandler, MouseButton, MouseState};
+use ggez::graphics::{DrawParam, Drawable, Point2};
 use ggez::conf::{WindowMode, WindowSetup};
 use std::env;
 use std::path;
@@ -77,6 +77,18 @@ impl EventHandler for MainState {
         // Draw walls
         self.walls_sb.draw(ctx, Point2::new(0.0, 0.0), 0.0)?;
 
+        // Draw selection
+        if let Some((grid_x, grid_y)) = self.selection {
+            if self.selection != self.screen_to_grid_coord(self.mouse_coords) {
+                let (screen_x, screen_y) = self.grid_to_screen_coord((grid_x, grid_y));
+                let old_color = graphics::get_color(ctx);
+                graphics::set_color(ctx, graphics::Color::from_rgb(255, 250, 0))?;
+                self.cursor_img
+                    .draw(ctx, Point2::new(screen_x as f32, screen_y as f32), 0.0)?;
+                graphics::set_color(ctx, old_color)?;
+            }
+        }
+
         // Draw highlighted grid cell
         match self.screen_to_grid_coord(self.mouse_coords) {
             Some((grid_x, grid_y)) => {
@@ -98,23 +110,15 @@ impl EventHandler for MainState {
                 let (rect_x, rect_y) = self.grid_to_screen_coord((grid_x, grid_y));
                 let old_color = graphics::get_color(ctx);
                 graphics::set_color(ctx, graphics::Color::from_rgb(234, 152, 174))?;
-                graphics::rectangle(
-                    ctx,
-                    DrawMode::Fill,
-                    Rect::new(
-                        rect_x as f32,
-                        rect_y as f32,
-                        (self.grid_cell_dim - self.grid_line_width) as f32,
-                        (self.grid_cell_dim - self.grid_line_width) as f32,
-                    ),
-                )?;
+                self.cursor_img
+                    .draw(ctx, Point2::new(rect_x as f32, rect_y as f32), 0.0)?;
                 graphics::set_color(ctx, old_color)?;
             }
             None => (),
         }
 
         // Draw animated sprite
-        let screen_coord = self.grid_to_screen_coord((0, 0));
+        let screen_coord = self.grid_to_screen_coord((3, 3));
         self.konrad_imgs[self.konrad_tick as usize].draw_ex(
             ctx,
             DrawParam {
@@ -138,6 +142,13 @@ impl EventHandler for MainState {
     ) {
         self.mouse_coords = (x as u32, y as u32);
     }
+
+    fn mouse_button_up_event(&mut self, _ctx: &mut Context, button: MouseButton, x: i32, y: i32) {
+        match button {
+            MouseButton::Left => self.selection = self.screen_to_grid_coord((x as u32, y as u32)),
+            _ => (),
+        }
+    }
 }
 
 fn main() {
@@ -159,5 +170,15 @@ fn main() {
 
     let ctx = &mut cb.build().unwrap();
     let state = &mut MainState::new(ctx, window_width, window_height).unwrap();
+
+    for x in 0..10 {
+        for y in 0..10 {
+            match state.costs.get(&(x, y)) {
+                Some(dist) => print!("{} ", dist),
+                None => print!("x "),
+            }
+        }
+        println!("");
+    }
     event::run(ctx, state).unwrap();
 }
