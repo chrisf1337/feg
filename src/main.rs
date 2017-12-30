@@ -177,7 +177,7 @@ fn main() {
     for y in 0..10 {
         for x in 0..10 {
             match state.costs.get(&(x, y)) {
-                Some(dist) => print!("{:.2} ", utils::rat_to_f32(*dist)),
+                Some(dist) => print!("{:.2} ", utils::rat_to_f32(dist)),
                 None => print!("xxxx "),
             }
         }
