@@ -2,15 +2,17 @@ use std::cmp::Ordering;
 use std::u32;
 use std::collections::{BinaryHeap, HashMap};
 use terrain::Terrain;
+use num::Rational;
+use num::rational::Ratio;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 struct DaState {
-    dist: u32,
+    dist: Rational,
     pos: (u32, u32),
 }
 
 impl DaState {
-    fn new(dist: u32, pos: (u32, u32)) -> Self {
+    fn new(dist: Rational, pos: (u32, u32)) -> Self {
         DaState { dist, pos }
     }
 }
@@ -41,27 +43,31 @@ fn get_neighbors(
     terrain: &Vec<Vec<Terrain>>,
     max_w: u32,
     max_h: u32,
-) -> Vec<((u32, u32), u32)> {
+) -> Vec<((u32, u32), Rational)> {
     let mut neighbors = vec![];
     if point_x >= 1 && is_point_valid((point_x - 1, point_y), max_w, max_h)
         && terrain[(point_x - 1) as usize][point_y as usize] != Terrain::Wall
     {
-        neighbors.push(((point_x - 1, point_y), 1));
+        let terr = &terrain[(point_x - 1) as usize][point_y as usize];
+        neighbors.push(((point_x - 1, point_y), terr.cost()));
     }
     if is_point_valid((point_x + 1, point_y), max_w, max_h)
         && terrain[(point_x + 1) as usize][point_y as usize] != Terrain::Wall
     {
-        neighbors.push(((point_x + 1, point_y), 1));
+        let terr = &terrain[(point_x + 1) as usize][point_y as usize];
+        neighbors.push(((point_x + 1, point_y), terr.cost()));
     }
     if point_y >= 1 && is_point_valid((point_x, point_y - 1), max_w, max_h)
         && terrain[point_x as usize][(point_y - 1) as usize] != Terrain::Wall
     {
-        neighbors.push(((point_x, point_y - 1), 1));
+        let terr = &terrain[point_x as usize][(point_y - 1) as usize];
+        neighbors.push(((point_x, point_y - 1), terr.cost()));
     }
     if is_point_valid((point_x, point_y + 1), max_w, max_h)
         && terrain[point_x as usize][(point_y + 1) as usize] != Terrain::Wall
     {
-        neighbors.push(((point_x, point_y + 1), 1));
+        let terr = &terrain[point_x as usize][(point_y + 1) as usize];
+        neighbors.push(((point_x, point_y + 1), terr.cost()));
     }
     neighbors
 }
@@ -75,12 +81,16 @@ pub fn compute_path_costs(
     max_w: u32,
     max_h: u32,
     max_dist: u32,
-) -> (HashMap<(u32, u32), (u32, u32)>, HashMap<(u32, u32), u32>) {
+) -> (
+    HashMap<(u32, u32), (u32, u32)>,
+    HashMap<(u32, u32), Rational>,
+) {
     let mut frontier = BinaryHeap::new();
-    frontier.push(DaState::new(0, src));
+    frontier.push(DaState::new(Ratio::from_integer(0), src));
     let mut came_from = HashMap::new();
     let mut cost_so_far = HashMap::new();
-    cost_so_far.insert(src, 0);
+    let max_dist = Ratio::from_integer(max_dist as isize);
+    cost_so_far.insert(src, Ratio::from_integer(0));
 
     while !frontier.is_empty() {
         let current = frontier.pop().unwrap();

@@ -2,6 +2,7 @@ use ggez::{Context, GameResult};
 use ggez::graphics::{DrawParam, Font, Image, Point2};
 use ggez::graphics::spritebatch::*;
 use std::collections::HashMap;
+use num::Rational;
 use dataparser;
 use pathfinding;
 use terrain::Terrain;
@@ -25,7 +26,7 @@ pub struct MainState {
     pub grid_n_cell_height: u32,
     pub grid_cell_dim: u32,
     pub paths: HashMap<(u32, u32), (u32, u32)>,
-    pub costs: HashMap<(u32, u32), u32>,
+    pub costs: HashMap<(u32, u32), Rational>,
     pub path_line_width: u32,
     pub cursor_img: Image,
     pub selection: Option<(u32, u32)>,

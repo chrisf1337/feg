@@ -1,8 +1,7 @@
-#[macro_use]
-extern crate decimal;
 extern crate ggez;
 #[macro_use]
 extern crate indoc;
+extern crate num;
 
 #[macro_use]
 mod utils;
@@ -178,8 +177,8 @@ fn main() {
     for y in 0..10 {
         for x in 0..10 {
             match state.costs.get(&(x, y)) {
-                Some(dist) => print!("{} ", dist),
-                None => print!("x "),
+                Some(dist) => print!("{:.2} ", utils::rat_to_f32(*dist)),
+                None => print!("xxxx "),
             }
         }
         println!("");
