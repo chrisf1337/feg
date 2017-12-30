@@ -5,6 +5,14 @@ use terrain::Terrain;
 use num::Rational;
 use num::rational::Ratio;
 
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+pub enum Direction {
+    N,
+    S,
+    E,
+    W,
+}
+
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 struct DaState {
     dist: Rational,
@@ -36,9 +44,8 @@ fn is_point_valid((point_x, point_y): (u32, u32), max_w: u32, max_h: u32) -> boo
     point_x < max_w && point_y < max_h
 }
 
-// Returns vec of ((coord_x, coord_y), cost)
-// Right now, all tile movement costs are 1.
-fn get_neighbors(
+// Returns vec of ((coord_x, coord_y), terrain movement cost).
+fn neighbor_costs(
     (point_x, point_y): (u32, u32),
     terrain: &Vec<Vec<Terrain>>,
     max_w: u32,
@@ -72,12 +79,45 @@ fn get_neighbors(
     neighbors
 }
 
+// Gets all valid neighbor coordinates (doesn't look at terrain)
+fn valid_neighbor_coords(
+    (point_x, point_y): (u32, u32),
+    max_w: u32,
+    max_h: u32,
+) -> Vec<(u32, u32)> {
+    let mut neighbors = vec![];
+    if point_x >= 1 && is_point_valid((point_x - 1, point_y), max_w, max_h) {
+        neighbors.push((point_x - 1, point_y));
+    }
+    if is_point_valid((point_x + 1, point_y), max_w, max_h) {
+        neighbors.push((point_x + 1, point_y));
+    }
+    if point_y >= 1 && is_point_valid((point_x, point_y - 1), max_w, max_h) {
+        neighbors.push((point_x, point_y - 1));
+    }
+    if is_point_valid((point_x, point_y + 1), max_w, max_h) {
+        neighbors.push((point_x, point_y + 1));
+    }
+    neighbors
+}
+
 // Dijkstra's algorithm
-// Params: (x, y) coords of source and destination
-// Returns map of backpointers indicating best paths to each coord, map of costs
-// to each coord. At the src point, came_from points to src (i.e., to find the
-// end of the path, the condition is that the backpointer for a point points to
-// the point itself).
+// Params:
+// src: (x, y) coords of source and destination
+// terrain: 2d vec (x, y) of terrain features
+// max_w, max_h: grid width, height
+// max_dist: max movement of unit (algorithm stops considering neighbors when it
+// encounters a total cost > max_dist)
+//
+// Returns:
+// 0: map of backpointers indicating best paths to each coord
+// 1: map of costs to each coord
+// 2: set of boundary coords
+// 3: set of all reachable coords
+//
+// At the src point, came_from points to src (i.e., to find the end of the path,
+// the condition is that the backpointer for a point points to the point
+// itself).
 pub fn compute_path_costs(
     src: (u32, u32),
     terrain: &Vec<Vec<Terrain>>,
@@ -87,6 +127,7 @@ pub fn compute_path_costs(
 ) -> (
     HashMap<(u32, u32), (u32, u32)>,
     HashMap<(u32, u32), Rational>,
+    HashSet<(u32, u32)>,
     HashSet<(u32, u32)>,
 ) {
     let mut frontier = BinaryHeap::new();
@@ -98,12 +139,14 @@ pub fn compute_path_costs(
     cost_so_far.insert(src, Ratio::from_integer(0));
 
     let mut max_boundary = HashSet::new();
+    let mut reachable_coords = HashSet::new();
 
     while !frontier.is_empty() {
         let current = frontier.pop().unwrap();
         max_boundary.remove(&came_from[&current.pos]);
         max_boundary.insert(current.pos);
-        for (neighbor_coord, cost) in get_neighbors(current.pos, terrain, max_w, max_h) {
+        reachable_coords.insert(current.pos);
+        for (neighbor_coord, cost) in neighbor_costs(current.pos, terrain, max_w, max_h) {
             let new_cost = cost_so_far[&current.pos] + cost;
             if new_cost <= max_dist
                 && (!cost_so_far.contains_key(&neighbor_coord)
@@ -115,7 +158,7 @@ pub fn compute_path_costs(
             }
         }
     }
-    (came_from, cost_so_far, max_boundary)
+    (came_from, cost_so_far, max_boundary, reachable_coords)
 }
 
 // Reads from the map of backpointers to get the best path to dest.
@@ -158,6 +201,57 @@ pub fn consolidate_path(path: Vec<(u32, u32)>) -> Vec<(u32, u32)> {
         consolidated_path.push(path[path.len() - 1]);
     }
     consolidated_path
+}
+
+// Gets the direction to `to`, starting from `from`. `from` and `to` must be
+// adjacent (otherwise panics).
+fn relative_adj_dir(from: (u32, u32), to: (u32, u32)) -> Direction {
+    let from = tuple_as!(from, (x, i32), (y, i32));
+    let to = tuple_as!(to, (x, i32), (y, i32));
+    if from.0 == to.0 {
+        if from.1 - to.1 == 1 {
+            Direction::N
+        } else if from.1 - to.1 == -1 {
+            Direction::S
+        } else {
+            unreachable!();
+        }
+    } else if from.1 == to.1 {
+        if from.0 - to.0 == 1 {
+            Direction::W
+        } else if from.0 - to.0 == -1 {
+            Direction::E
+        } else {
+            unreachable!();
+        }
+    } else {
+        unreachable!();
+    }
+}
+
+// For each grid coord in the boundary, look at its neighbors and tag each coord
+// with the direction of each neighbor. We need to do this because when we draw
+// the boundary, we need to determine on which sides of the grid cell to draw
+// the border.
+pub fn find_boundary_neighbor_directions(
+    boundary: &HashSet<(u32, u32)>,
+    reachable_coords: &HashSet<(u32, u32)>,
+    max_w: u32,
+    max_h: u32,
+) -> Vec<((u32, u32), Vec<Direction>)> {
+    boundary
+        .iter()
+        .map(|&(x, y)| {
+            let mut directions = vec![Direction::N, Direction::S, Direction::E, Direction::W];
+            let neighbors = valid_neighbor_coords((x, y), max_w, max_h);
+            for neighbor in neighbors.iter() {
+                if reachable_coords.contains(&neighbor) {
+                    directions.remove_item(&relative_adj_dir((x, y), *neighbor));
+                }
+            }
+            ((x, y), directions)
+        })
+        .collect()
 }
 
 #[cfg(test)]

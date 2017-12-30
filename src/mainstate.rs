@@ -1,5 +1,5 @@
-use ggez::{Context, GameResult};
-use ggez::graphics::{DrawParam, Font, Image, Point2};
+use ggez::{graphics, Context, GameResult};
+use ggez::graphics::{DrawParam, Drawable, Font, Image, Point2, Text};
 use ggez::graphics::spritebatch::*;
 use std::collections::{HashMap, HashSet};
 use num::Rational;
@@ -28,10 +28,12 @@ pub struct MainState {
     pub paths: HashMap<(u32, u32), (u32, u32)>,
     pub costs: HashMap<(u32, u32), Rational>,
     pub boundary: HashSet<(u32, u32)>,
+    pub reachable_coords: HashSet<(u32, u32)>,
     pub path_line_width: u32,
     pub cursor_img: Image,
     pub selection: Option<(u32, u32)>,
     pub grid_coord_to_unit_map: HashMap<(u32, u32), ()>,
+    pub number_texts: Vec<Text>,
 }
 
 impl MainState {
@@ -51,7 +53,7 @@ impl MainState {
         let grid_n_cell_width = 10; // number of horizontal grid cells
         let grid_n_cell_height = 10; // number of verical grid cells
 
-        let (paths, costs, boundary) = pathfinding::compute_path_costs(
+        let (paths, costs, boundary, reachable_coords) = pathfinding::compute_path_costs(
             (3, 3),
             &terrain,
             grid_n_cell_width,
@@ -59,9 +61,16 @@ impl MainState {
             4,
         );
 
+        let font = Font::new(ctx, "/DejaVuSerif.ttf", 10)?;
+        // Precompile Texts because Text::new() is expensive.
+        let number_texts = (0..10)
+            .into_iter()
+            .map(|i| Text::new(ctx, &i.to_string(), &font).unwrap())
+            .collect();
+
         let mut main_state = MainState {
             mouse_coords: (0, 0),
-            font: Font::new(ctx, "/DejaVuSerif.ttf", 10)?,
+            font,
             konrad_imgs,
             konrad_tick: 0.0,
             terrain: terrain.clone(),
@@ -82,12 +91,14 @@ impl MainState {
             paths,
             costs,
             boundary,
+            reachable_coords,
 
             // Width of the line used to draw the path indicator.
             path_line_width: 10,
             cursor_img: Image::new(ctx, "/cursor.png")?,
             selection: None,
             grid_coord_to_unit_map: HashMap::new(),
+            number_texts,
         };
 
         for (x, col) in terrain.iter().enumerate() {
@@ -112,6 +123,67 @@ impl MainState {
         }
 
         Ok(main_state)
+    }
+
+    pub fn draw_grid(&self, ctx: &mut Context) -> GameResult<()> {
+        for i in 0..self.grid_n_cell_height + 1 {
+            graphics::line(
+                ctx,
+                &[
+                    Point2::new(
+                        (self.horizontal_padding + i * self.grid_cell_dim) as f32,
+                        self.vertical_padding as f32,
+                    ),
+                    Point2::new(
+                        (self.horizontal_padding + i * self.grid_cell_dim) as f32,
+                        (self.window_height - self.vertical_padding) as f32,
+                    ),
+                ],
+                self.grid_line_width as f32,
+            )?;
+        }
+        for i in 0..self.grid_n_cell_width + 1 {
+            graphics::line(
+                ctx,
+                &[
+                    Point2::new(
+                        self.horizontal_padding as f32,
+                        (self.vertical_padding + i * self.grid_cell_dim) as f32,
+                    ),
+                    Point2::new(
+                        (self.window_width - self.horizontal_padding) as f32,
+                        (self.vertical_padding + i * self.grid_cell_dim) as f32,
+                    ),
+                ],
+                self.grid_line_width as f32,
+            )?;
+        }
+
+        // Draw x and y labels
+        for x in 0..10 {
+            self.number_texts[x].draw(
+                ctx,
+                Point2::new(
+                    (self.horizontal_padding + self.grid_cell_dim / 2 - 3
+                        + x as u32 * self.grid_cell_dim) as f32,
+                    (self.vertical_padding - 20) as f32,
+                ),
+                0.0,
+            )?;
+        }
+        for y in 0..10 {
+            self.number_texts[y].draw(
+                ctx,
+                Point2::new(
+                    (self.horizontal_padding - 20) as f32,
+                    (self.vertical_padding + self.grid_cell_dim / 2 - 2
+                        + y as u32 * self.grid_cell_dim) as f32,
+                ),
+                0.0,
+            )?;
+        }
+
+        Ok(())
     }
 
     // Includes pixels in the line of the grid

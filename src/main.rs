@@ -1,3 +1,4 @@
+#![feature(vec_remove_item)]
 extern crate ggez;
 #[cfg(test)]
 #[macro_use]
@@ -23,43 +24,6 @@ use std::path;
 
 use mainstate::*;
 
-fn draw_grid(ctx: &mut Context, main_state: &MainState) -> GameResult<()> {
-    for i in 0..main_state.grid_n_cell_height + 1 {
-        graphics::line(
-            ctx,
-            &[
-                Point2::new(
-                    (main_state.horizontal_padding + i * main_state.grid_cell_dim) as f32,
-                    main_state.vertical_padding as f32,
-                ),
-                Point2::new(
-                    (main_state.horizontal_padding + i * main_state.grid_cell_dim) as f32,
-                    (main_state.window_height - main_state.vertical_padding) as f32,
-                ),
-            ],
-            main_state.grid_line_width as f32,
-        )?;
-    }
-    for i in 0..main_state.grid_n_cell_width + 1 {
-        graphics::line(
-            ctx,
-            &[
-                Point2::new(
-                    main_state.horizontal_padding as f32,
-                    (main_state.vertical_padding + i * main_state.grid_cell_dim) as f32,
-                ),
-                Point2::new(
-                    (main_state.window_width - main_state.horizontal_padding) as f32,
-                    (main_state.vertical_padding + i * main_state.grid_cell_dim) as f32,
-                ),
-            ],
-            main_state.grid_line_width as f32,
-        )?;
-    }
-    Ok(())
-}
-
-
 impl EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         while timer::check_update_time(ctx, self.fps) {
@@ -73,7 +37,7 @@ impl EventHandler for MainState {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         graphics::clear(ctx);
-        draw_grid(ctx, self)?;
+        self.draw_grid(ctx)?;
 
         // Draw fps counter
         let fps = (ggez::timer::get_fps(ctx) as u32).to_string();
@@ -191,5 +155,14 @@ fn main() {
         println!("");
     }
     println!("{:?}", state.boundary);
+    println!(
+        "{:?}",
+        pathfinding::find_boundary_neighbor_directions(
+            &state.boundary,
+            &state.reachable_coords,
+            state.grid_n_cell_width,
+            state.grid_n_cell_height
+        )
+    );
     event::run(ctx, state).unwrap();
 }
