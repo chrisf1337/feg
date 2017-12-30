@@ -229,10 +229,10 @@ fn relative_adj_dir(from: (u32, u32), to: (u32, u32)) -> Direction {
     }
 }
 
-// For each grid coord in the boundary, look at its neighbors and tag each coord
-// with the direction of each neighbor. We need to do this because when we draw
-// the boundary, we need to determine on which sides of the grid cell to draw
-// the border.
+// For each grid coord in the boundary, look at its neighbors and remove each
+// direction to the neighbor. We need to do this because when we draw the
+// boundary, we need to determine on which sides of the grid cell to draw the
+// border.
 pub fn find_boundary_neighbor_directions(
     boundary: &HashSet<(u32, u32)>,
     reachable_coords: &HashSet<(u32, u32)>,
