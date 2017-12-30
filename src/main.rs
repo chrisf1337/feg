@@ -1,6 +1,10 @@
 extern crate ggez;
+#[cfg(test)]
 #[macro_use]
 extern crate indoc;
+#[cfg(test)]
+#[macro_use]
+extern crate maplit;
 extern crate num;
 
 #[macro_use]
@@ -98,17 +102,20 @@ impl EventHandler for MainState {
                 let mut cpath_segments = self.cpath_to_segments(pathfinding::consolidate_path(
                     pathfinding::get_path((grid_x, grid_y), &self.paths),
                 ));
-                for segment in cpath_segments.chunks(2) {
-                    let start = segment[0];
-                    let end = segment[1];
-                    graphics::line(
-                        ctx,
-                        &[
-                            Point2::new(start.0 as f32, start.1 as f32),
-                            Point2::new(end.0 as f32, end.1 as f32),
-                        ],
-                        self.path_line_width as f32,
-                    )?;
+                if cpath_segments.len() > 1 {
+                    // Don't draw path when cursor is on the unit itself
+                    for segment in cpath_segments.chunks(2) {
+                        let start = segment[0];
+                        let end = segment[1];
+                        graphics::line(
+                            ctx,
+                            &[
+                                Point2::new(start.0 as f32, start.1 as f32),
+                                Point2::new(end.0 as f32, end.1 as f32),
+                            ],
+                            self.path_line_width as f32,
+                        )?;
+                    }
                 }
                 let (rect_x, rect_y) = self.grid_to_screen_coord((grid_x, grid_y));
                 let old_color = graphics::get_color(ctx);
@@ -183,5 +190,6 @@ fn main() {
         }
         println!("");
     }
+    println!("{:?}", state.boundary);
     event::run(ctx, state).unwrap();
 }

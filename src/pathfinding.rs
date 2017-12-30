@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::u32;
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 use terrain::Terrain;
 use num::Rational;
 use num::rational::Ratio;
@@ -74,7 +74,10 @@ fn get_neighbors(
 
 // Dijkstra's algorithm
 // Params: (x, y) coords of source and destination
-// Returns map of backpointers indicating best paths to each coord, map of costs to each coord
+// Returns map of backpointers indicating best paths to each coord, map of costs
+// to each coord. At the src point, came_from points to src (i.e., to find the
+// end of the path, the condition is that the backpointer for a point points to
+// the point itself).
 pub fn compute_path_costs(
     src: (u32, u32),
     terrain: &Vec<Vec<Terrain>>,
@@ -84,16 +87,22 @@ pub fn compute_path_costs(
 ) -> (
     HashMap<(u32, u32), (u32, u32)>,
     HashMap<(u32, u32), Rational>,
+    HashSet<(u32, u32)>,
 ) {
     let mut frontier = BinaryHeap::new();
     frontier.push(DaState::new(Ratio::from_integer(0), src));
-    let mut came_from = HashMap::new();
+    let mut came_from: HashMap<(u32, u32), (u32, u32)> = HashMap::new();
+    came_from.insert(src, src);
     let mut cost_so_far = HashMap::new();
     let max_dist = Ratio::from_integer(max_dist as isize);
     cost_so_far.insert(src, Ratio::from_integer(0));
 
+    let mut max_boundary = HashSet::new();
+
     while !frontier.is_empty() {
         let current = frontier.pop().unwrap();
+        max_boundary.remove(&came_from[&current.pos]);
+        max_boundary.insert(current.pos);
         for (neighbor_coord, cost) in get_neighbors(current.pos, terrain, max_w, max_h) {
             let new_cost = cost_so_far[&current.pos] + cost;
             if new_cost <= max_dist
@@ -106,14 +115,18 @@ pub fn compute_path_costs(
             }
         }
     }
-    (came_from, cost_so_far)
+    (came_from, cost_so_far, max_boundary)
 }
 
 // Reads from the map of backpointers to get the best path to dest.
 pub fn get_path(dest: (u32, u32), paths: &HashMap<(u32, u32), (u32, u32)>) -> Vec<(u32, u32)> {
+    if paths.get(&dest) == Some(&dest) {
+        // src == dest
+        return vec![dest];
+    }
     let mut path = vec![];
     let mut cur = dest;
-    while paths.contains_key(&cur) {
+    while paths.contains_key(&cur) && paths[&cur] != cur {
         path.push(cur);
         cur = paths[&cur];
     }
@@ -150,6 +163,36 @@ pub fn consolidate_path(path: Vec<(u32, u32)>) -> Vec<(u32, u32)> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_get_path_src() {
+        let paths = hashmap! {
+            (2, 1) => (1, 1),
+            (1, 1) => (0, 0),
+            (0, 0) => (0, 0),
+        };
+        assert_eq!(get_path((0, 0), &paths), vec![(0, 0)]);
+    }
+
+    #[test]
+    fn test_get_path_1() {
+        let paths = hashmap! {
+            (2, 1) => (1, 1),
+            (1, 1) => (0, 0),
+            (0, 0) => (0, 0),
+        };
+        assert_eq!(get_path((1, 1), &paths), vec![(0, 0), (1, 1)]);
+    }
+
+    #[test]
+    fn test_get_path_2() {
+        let paths = hashmap! {
+            (2, 1) => (1, 1),
+            (1, 1) => (0, 0),
+            (0, 0) => (0, 0),
+        };
+        assert_eq!(get_path((2, 1), &paths), vec![(0, 0), (1, 1), (2, 1)]);
+    }
 
     #[test]
     fn test_consolidate_path_simple_1() {

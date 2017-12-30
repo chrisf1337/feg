@@ -1,7 +1,7 @@
 use ggez::{Context, GameResult};
 use ggez::graphics::{DrawParam, Font, Image, Point2};
 use ggez::graphics::spritebatch::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use num::Rational;
 use dataparser;
 use pathfinding;
@@ -27,6 +27,7 @@ pub struct MainState {
     pub grid_cell_dim: u32,
     pub paths: HashMap<(u32, u32), (u32, u32)>,
     pub costs: HashMap<(u32, u32), Rational>,
+    pub boundary: HashSet<(u32, u32)>,
     pub path_line_width: u32,
     pub cursor_img: Image,
     pub selection: Option<(u32, u32)>,
@@ -50,7 +51,7 @@ impl MainState {
         let grid_n_cell_width = 10; // number of horizontal grid cells
         let grid_n_cell_height = 10; // number of verical grid cells
 
-        let (paths, costs) = pathfinding::compute_path_costs(
+        let (paths, costs, boundary) = pathfinding::compute_path_costs(
             (3, 3),
             &terrain,
             grid_n_cell_width,
@@ -80,6 +81,7 @@ impl MainState {
             grid_cell_dim: (window_height - 2 * vertical_padding) / grid_n_cell_height,
             paths,
             costs,
+            boundary,
 
             // Width of the line used to draw the path indicator.
             path_line_width: 10,

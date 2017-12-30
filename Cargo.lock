@@ -222,6 +222,7 @@ version = "0.1.0"
 dependencies = [
  "ggez 0.4.0-rc.2 (git+https://github.com/ggez/ggez.git)",
  "indoc 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "maplit 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.41 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -578,6 +579,11 @@ dependencies = [
 [[package]]
 name = "lzw"
 version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "maplit"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -1135,6 +1141,7 @@ dependencies = [
 "checksum lyon_svg 0.8.6 (registry+https://github.com/rust-lang/crates.io-index)" = "0121480680a6301fb72c124aa5b5bf97dcac53341f95ae7f00ad94b4da615260"
 "checksum lyon_tessellation 0.8.6 (registry+https://github.com/rust-lang/crates.io-index)" = "e6c611f84f0eec9d5fee03d1f51471d8a7814680c161c20f3803ddb5a913d6b4"
 "checksum lzw 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7d947cbb889ed21c2a84be6ffbaebf5b4e0f4340638cba0444907e38b56be084"
+"checksum maplit 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5ed95049d40b8a1a7691adbabca028ad481f7e6a2921ce4846e1ee168b4e4ca5"
 "checksum matrixmultiply 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)" = "cac1a66eab356036af85ea093101a14223dc6e3f4c02a59b7d572e5b93270bf7"
 "checksum miniz-sys 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "609ce024854aeb19a0ef7567d348aaa5a746b32fb72e336df7fcc16869d7e2b4"
 "checksum msdos_time 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "65ba9d75bcea84e07812618fedf284a64776c2f2ea0cad6bca7f69739695a958"
