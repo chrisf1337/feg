@@ -66,7 +66,7 @@ pub fn parse_walls<P: AsRef<Path>>(path: P, max_w: usize, max_h: usize) -> Resul
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use super::parse_walls_from_bufread;
     use std::io::Cursor;
 
     #[test]

@@ -83,12 +83,11 @@ pub fn compute_path_costs(
 
     while !frontier.is_empty() {
         let current = frontier.pop().unwrap();
-        if current.dist >= max_dist {
-            continue;
-        }
         for (neighbor_coord, cost) in get_neighbors(current.pos, walls, max_w, max_h) {
             let new_cost = cost_so_far[&current.pos] + cost;
-            if !cost_so_far.contains_key(&neighbor_coord) || new_cost < cost_so_far[&neighbor_coord]
+            if new_cost <= max_dist
+                && (!cost_so_far.contains_key(&neighbor_coord)
+                    || new_cost < cost_so_far[&neighbor_coord])
             {
                 cost_so_far.insert(neighbor_coord.clone(), new_cost);
                 frontier.push(DaState::new(new_cost, neighbor_coord.clone()));
