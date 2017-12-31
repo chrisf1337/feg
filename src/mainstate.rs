@@ -6,6 +6,9 @@ use num::Rational;
 use dataparser;
 use pathfinding;
 use terrain::Terrain;
+use unit::Unit;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct MainState {
@@ -34,6 +37,8 @@ pub struct MainState {
     pub selection: Option<(u32, u32)>,
     pub grid_coord_to_unit_map: HashMap<(u32, u32), ()>,
     pub number_texts: Vec<Text>,
+    pub units: HashMap<(u32, u32), Rc<RefCell<Unit>>>,
+    pub selected_unit: Option<Rc<RefCell<Unit>>>,
 }
 
 impl MainState {
@@ -60,6 +65,10 @@ impl MainState {
             grid_n_cell_height,
             4,
         );
+
+        let units = hashmap! {
+            (3, 3) => Rc::new(RefCell::new(Unit::new()))
+        };
 
         let font = Font::new(ctx, "/DejaVuSerif.ttf", 10)?;
         // Precompile Texts because Text::new() is expensive.
@@ -99,6 +108,9 @@ impl MainState {
             selection: None,
             grid_coord_to_unit_map: HashMap::new(),
             number_texts,
+
+            units,
+            selected_unit: None,
         };
 
         for (x, col) in terrain.iter().enumerate() {

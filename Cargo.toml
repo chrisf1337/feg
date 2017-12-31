@@ -6,7 +6,7 @@ authors = ["chrisf"]
 [dependencies]
 ggez = { git = "https://github.com/ggez/ggez.git", branch = "master" }
 num = "*"
+maplit = "*"
 
 [dev-dependencies]
 indoc = "*"
-maplit = "*"

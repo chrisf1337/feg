@@ -3,7 +3,6 @@ extern crate ggez;
 #[cfg(test)]
 #[macro_use]
 extern crate indoc;
-#[cfg(test)]
 #[macro_use]
 extern crate maplit;
 extern crate num;
@@ -14,13 +13,16 @@ mod dataparser;
 mod pathfinding;
 mod mainstate;
 mod terrain;
+mod unit;
 
 use ggez::{event, graphics, timer, Context, ContextBuilder, GameResult};
 use ggez::event::{EventHandler, MouseButton, MouseState};
-use ggez::graphics::{DrawParam, Drawable, Point2};
+use ggez::graphics::{Color, DrawMode, DrawParam, Drawable, Point2};
 use ggez::conf::{WindowMode, WindowSetup};
 use std::env;
 use std::path;
+use num::rational::Ratio;
+use num::Zero;
 
 use mainstate::*;
 
@@ -48,6 +50,23 @@ impl EventHandler for MainState {
         self.wall_sb.draw(ctx, Point2::new(0.0, 0.0), 0.0)?;
         self.sand_sb.draw(ctx, Point2::new(0.0, 0.0), 0.0)?;
 
+        for &coord in self.reachable_coords.iter() {
+            let old_color = graphics::get_color(ctx);
+            graphics::set_color(ctx, Color::from_rgba(255, 84, 163, 60))?;
+            let (x, y) = self.grid_to_screen_coord(coord);
+            graphics::rectangle(
+                ctx,
+                DrawMode::Fill,
+                graphics::Rect {
+                    x: x as f32,
+                    y: y as f32,
+                    w: (self.grid_cell_dim - self.grid_line_width) as f32,
+                    h: (self.grid_cell_dim - self.grid_line_width) as f32,
+                },
+            )?;
+            graphics::set_color(ctx, old_color)?;
+        }
+
         // Draw selection
         if let Some((grid_x, grid_y)) = self.selection {
             if self.selection != self.screen_to_grid_coord(self.mouse_coords) {
@@ -60,7 +79,7 @@ impl EventHandler for MainState {
             }
         }
 
-        // Draw highlighted grid cell
+        // Draw highlighted grid cell and path
         match self.screen_to_grid_coord(self.mouse_coords) {
             Some((grid_x, grid_y)) => {
                 let mut cpath_segments = self.cpath_to_segments(pathfinding::consolidate_path(
@@ -119,7 +138,16 @@ impl EventHandler for MainState {
 
     fn mouse_button_up_event(&mut self, _ctx: &mut Context, button: MouseButton, x: i32, y: i32) {
         match button {
-            MouseButton::Left => self.selection = self.screen_to_grid_coord((x as u32, y as u32)),
+            MouseButton::Left => {
+                self.selection = self.screen_to_grid_coord((x as u32, y as u32));
+                match self.selection {
+                    Some(grid_coord) => match self.units.get(&grid_coord) {
+                        Some(unit) => self.selected_unit = Some(unit.clone()),
+                        None => self.selected_unit = None,
+                    },
+                    None => self.selected_unit = None,
+                }
+            }
             _ => (),
         }
     }
@@ -148,8 +176,14 @@ fn main() {
     for y in 0..10 {
         for x in 0..10 {
             match state.costs.get(&(x, y)) {
-                Some(dist) => print!("{:.2} ", utils::rat_to_f32(dist)),
-                None => print!("xxxx "),
+                Some(dist) => {
+                    if dist == &Ratio::zero() {
+                        print!("  S  ")
+                    } else {
+                        print!("{:.2} ", utils::rat_to_f32(dist))
+                    }
+                }
+                None => print!("---- "),
             }
         }
         println!("");
