@@ -1,8 +1,7 @@
 use ggez::{graphics, Context, GameResult};
 use ggez::graphics::{DrawParam, Drawable, Font, Image, Point2, Text};
 use ggez::graphics::spritebatch::*;
-use std::collections::{HashMap, HashSet};
-use num::Rational;
+use std::collections::HashMap;
 use dataparser;
 use pathfinding;
 use terrain::Terrain;
@@ -14,8 +13,6 @@ use std::rc::Rc;
 pub struct MainState {
     pub mouse_coords: (u32, u32),
     pub font: Font,
-    pub konrad_imgs: Vec<Image>,
-    pub konrad_tick: f32,
     pub terrain: Vec<Vec<Terrain>>,
     pub wall_sb: SpriteBatch,
     pub sand_sb: SpriteBatch,
@@ -28,10 +25,6 @@ pub struct MainState {
     pub grid_n_cell_width: u32,
     pub grid_n_cell_height: u32,
     pub grid_cell_dim: u32,
-    pub paths: HashMap<(u32, u32), (u32, u32)>,
-    pub costs: HashMap<(u32, u32), Rational>,
-    pub boundary: HashSet<(u32, u32)>,
-    pub reachable_coords: HashSet<(u32, u32)>,
     pub path_line_width: u32,
     pub cursor_img: Image,
     pub selection: Option<(u32, u32)>,
@@ -43,13 +36,6 @@ pub struct MainState {
 
 impl MainState {
     pub fn new(ctx: &mut Context, window_width: u32, window_height: u32) -> GameResult<Self> {
-        let konrad_imgs = vec![
-            Image::new(ctx, "/konrad-commander.png")?,
-            Image::new(ctx, "/konrad-commander-attack-1.png")?,
-            Image::new(ctx, "/konrad-commander-attack-2.png")?,
-            Image::new(ctx, "/konrad-commander-attack-3.png")?,
-            Image::new(ctx, "/konrad-commander-attack-4.png")?,
-        ];
         let wall_sb = SpriteBatch::new(Image::new(ctx, "/wall.png")?);
         let sand_sb = SpriteBatch::new(Image::new(ctx, "/sand.png")?);
         let terrain = dataparser::parse_walls("terrain.txt", 10, 10)?;
@@ -57,18 +43,6 @@ impl MainState {
         let vertical_padding = 30;
         let grid_n_cell_width = 10; // number of horizontal grid cells
         let grid_n_cell_height = 10; // number of verical grid cells
-
-        let (paths, costs, boundary, reachable_coords) = pathfinding::compute_path_costs(
-            (3, 3),
-            &terrain,
-            grid_n_cell_width,
-            grid_n_cell_height,
-            4,
-        );
-
-        let units = hashmap! {
-            (3, 3) => Rc::new(RefCell::new(Unit::new()))
-        };
 
         let font = Font::new(ctx, "/DejaVuSerif.ttf", 10)?;
         // Precompile Texts because Text::new() is expensive.
@@ -80,8 +54,6 @@ impl MainState {
         let mut main_state = MainState {
             mouse_coords: (0, 0),
             font,
-            konrad_imgs,
-            konrad_tick: 0.0,
             terrain: terrain.clone(),
             wall_sb,
             sand_sb,
@@ -97,10 +69,6 @@ impl MainState {
 
             // 74. This includes the line width.
             grid_cell_dim: (window_height - 2 * vertical_padding) / grid_n_cell_height,
-            paths,
-            costs,
-            boundary,
-            reachable_coords,
 
             // Width of the line used to draw the path indicator.
             path_line_width: 10,
@@ -109,7 +77,7 @@ impl MainState {
             grid_coord_to_unit_map: HashMap::new(),
             number_texts,
 
-            units,
+            units: HashMap::new(),
             selected_unit: None,
         };
 
@@ -135,6 +103,33 @@ impl MainState {
         }
 
         Ok(main_state)
+    }
+
+    pub fn add_unit(
+        &mut self,
+        id: u32,
+        movement_range: u32,
+        location: (u32, u32),
+        animation_sprites: Vec<Image>,
+    ) {
+        let (paths, costs, boundary, reachable_coords) = pathfinding::compute_path_costs(
+            location,
+            &self.terrain,
+            self.grid_n_cell_width,
+            self.grid_n_cell_height,
+            movement_range,
+        );
+        let unit = Unit::new(
+            id,
+            movement_range,
+            location,
+            animation_sprites,
+            paths,
+            costs,
+            boundary,
+            reachable_coords,
+        );
+        self.units.insert(location, Rc::new(RefCell::new(unit)));
     }
 
     pub fn draw_grid(&self, ctx: &mut Context) -> GameResult<()> {

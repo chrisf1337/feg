@@ -3,6 +3,7 @@ extern crate ggez;
 #[cfg(test)]
 #[macro_use]
 extern crate indoc;
+#[cfg(test)]
 #[macro_use]
 extern crate maplit;
 extern crate num;
@@ -17,7 +18,7 @@ mod unit;
 
 use ggez::{event, graphics, timer, Context, ContextBuilder, GameResult};
 use ggez::event::{EventHandler, MouseButton, MouseState};
-use ggez::graphics::{Color, DrawMode, DrawParam, Drawable, Point2};
+use ggez::graphics::{Color, DrawMode, DrawParam, Drawable, Image, Point2};
 use ggez::conf::{WindowMode, WindowSetup};
 use std::env;
 use std::path;
@@ -29,9 +30,12 @@ use mainstate::*;
 impl EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         while timer::check_update_time(ctx, self.fps) {
-            self.konrad_tick += 2.0 / (self.fps as f32);
-            if self.konrad_tick >= 5.0 {
-                self.konrad_tick -= 5.0;
+            let unit = self.units[&(3, 3)].clone();
+            let mut unit = unit.borrow_mut();
+            unit.animation_tick += 2.0 / (self.fps as f32);
+
+            if unit.animation_tick >= 5.0 {
+                unit.animation_tick -= 5.0;
             }
         }
         Ok(())
@@ -50,7 +54,10 @@ impl EventHandler for MainState {
         self.wall_sb.draw(ctx, Point2::new(0.0, 0.0), 0.0)?;
         self.sand_sb.draw(ctx, Point2::new(0.0, 0.0), 0.0)?;
 
-        for &coord in self.reachable_coords.iter() {
+        let unit = self.units[&(3, 3)].clone();
+        let unit = unit.borrow();
+
+        for &coord in unit.reachable_coords.iter() {
             let old_color = graphics::get_color(ctx);
             graphics::set_color(ctx, Color::from_rgba(255, 84, 163, 60))?;
             let (x, y) = self.grid_to_screen_coord(coord);
@@ -83,7 +90,7 @@ impl EventHandler for MainState {
         match self.screen_to_grid_coord(self.mouse_coords) {
             Some((grid_x, grid_y)) => {
                 let mut cpath_segments = self.cpath_to_segments(pathfinding::consolidate_path(
-                    pathfinding::get_path((grid_x, grid_y), &self.paths),
+                    pathfinding::get_path((grid_x, grid_y), &(unit.paths)),
                 ));
                 if cpath_segments.len() > 1 {
                     // Don't draw path when cursor is on the unit itself
@@ -112,7 +119,7 @@ impl EventHandler for MainState {
 
         // Draw animated sprite
         let screen_coord = self.grid_to_screen_coord((3, 3));
-        self.konrad_imgs[self.konrad_tick as usize].draw_ex(
+        unit.animation_sprites[unit.animation_tick as usize].draw_ex(
             ctx,
             DrawParam {
                 dest: Point2::new(screen_coord.0 as f32, screen_coord.1 as f32),
@@ -172,31 +179,49 @@ fn main() {
 
     let ctx = &mut cb.build().unwrap();
     let state = &mut MainState::new(ctx, window_width, window_height).unwrap();
-
-    for y in 0..10 {
-        for x in 0..10 {
-            match state.costs.get(&(x, y)) {
-                Some(dist) => {
-                    if dist == &Ratio::zero() {
-                        print!("  S  ")
-                    } else {
-                        print!("{:.2} ", utils::rat_to_f32(dist))
-                    }
-                }
-                None => print!("---- "),
-            }
-        }
-        println!("");
-    }
-    println!("{:?}", state.boundary);
-    println!(
-        "{:?}",
-        pathfinding::find_boundary_neighbor_directions(
-            &state.boundary,
-            &state.reachable_coords,
-            state.grid_n_cell_width,
-            state.grid_n_cell_height
-        )
+    state.add_unit(
+        1,
+        5,
+        (3, 3),
+        vec![
+            Image::new(ctx, "/konrad-commander.png"),
+            Image::new(ctx, "/konrad-commander-attack-1.png"),
+            Image::new(ctx, "/konrad-commander-attack-2.png"),
+            Image::new(ctx, "/konrad-commander-attack-3.png"),
+            Image::new(ctx, "/konrad-commander-attack-4.png"),
+        ].into_iter()
+            .map(|x| x.unwrap())
+            .collect(),
     );
+
+    {
+        let unit = state.units[&(3, 3)].clone();
+        let unit = unit.borrow();
+        for y in 0..10 {
+            for x in 0..10 {
+                match unit.costs.get(&(x, y)) {
+                    Some(dist) => {
+                        if dist == &Ratio::zero() {
+                            print!("  S  ")
+                        } else {
+                            print!("{:.2} ", utils::rat_to_f32(dist))
+                        }
+                    }
+                    None => print!("---- "),
+                }
+            }
+            println!("");
+        }
+        println!("{:?}", unit.boundary);
+        println!(
+            "{:?}",
+            pathfinding::find_boundary_neighbor_directions(
+                &(unit.boundary),
+                &(unit.reachable_coords),
+                state.grid_n_cell_width,
+                state.grid_n_cell_height
+            )
+        );
+    }
     event::run(ctx, state).unwrap();
 }
